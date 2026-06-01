@@ -1,8 +1,9 @@
-import React from 'react';
+﻿import React from 'react';
 import { useReactFlow } from 'reactflow';
 
-const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
+const PropertiesPanel = ({ selectedElement, setSelectedElement, wireOptions, transformerOptions }) => {
   const { deleteElements } = useReactFlow();
+
   if (!selectedElement) {
     return (
       <div className="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto">
@@ -15,26 +16,27 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
   }
 
   const isNode = selectedElement.type === 'node';
+  const shape = selectedElement.data?.shape;
+  const isTransformerNode = isNode && shape === 'diamond';
+  const isConsumerNode = isNode && shape === 'rectangle';
 
   const handleChange = (field, value) => {
-    setSelectedElement(prev => ({
+    setSelectedElement((prev) => ({
       ...prev,
       data: {
         ...prev.data,
-        [field]: value
-      }
+        [field]: value,
+      },
     }));
   };
 
   return (
     <div className="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto">
       <h2 className="text-lg font-bold text-gray-800 mb-4">Свойства</h2>
-      
+
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            ID
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
           <input
             type="text"
             value={selectedElement.id}
@@ -44,24 +46,20 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Метка
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Метка (авто)</label>
           <input
             type="text"
             value={selectedElement.data?.label || ''}
-            onChange={(e) => handleChange('label', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            placeholder="Введите метку"
+            disabled
+            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500 text-sm"
+            placeholder="Формируется автоматически"
           />
         </div>
 
         {isNode && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Описание
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
               <textarea
                 value={selectedElement.data?.description || ''}
                 onChange={(e) => handleChange('description', e.target.value)}
@@ -72,9 +70,7 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Цвет
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Цвет</label>
               <input
                 type="color"
                 value={selectedElement.data?.color || '#3b82f6'}
@@ -82,15 +78,50 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
                 className="w-full h-10 rounded-md cursor-pointer"
               />
             </div>
+
+            {isTransformerNode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Модель трансформатора
+                </label>
+                <select
+                  value={selectedElement.data?.transformer || ''}
+                  onChange={(e) => handleChange('transformer', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                >
+                  {!transformerOptions?.length && <option value="">Нет данных</option>}
+                  {(transformerOptions || []).map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {isConsumerNode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Потребление (нагрузка), кВт
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={selectedElement.data?.load ?? ''}
+                  onChange={(e) => handleChange('load', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  placeholder="Например: 25"
+                />
+              </div>
+            )}
           </>
         )}
 
         {!isNode && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Вес ребра
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Вес ребра</label>
               <input
                 type="number"
                 value={selectedElement.data?.weight || ''}
@@ -101,9 +132,7 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Стиль линии
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Стиль линии</label>
               <select
                 value={selectedElement.data?.lineStyle || 'solid'}
                 onChange={(e) => handleChange('lineStyle', e.target.value)}
@@ -116,9 +145,7 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Тип ребра
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Тип ребра</label>
               <select
                 value={selectedElement.data?.edgeType || 'smoothstep'}
                 onChange={(e) => handleChange('edgeType', e.target.value)}
@@ -130,15 +157,56 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
                 <option value="default">Кривая Безье</option>
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Длина линии, км</label>
+              <input
+                type="number"
+                min="0.001"
+                step="0.1"
+                value={selectedElement.data?.length ?? ''}
+                onChange={(e) => handleChange('length', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                placeholder="Например: 0.5"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Марка провода</label>
+              <select
+                value={selectedElement.data?.wire || ''}
+                onChange={(e) => handleChange('wire', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="">Выберите провод</option>
+                {(wireOptions || []).map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
           </>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-4">
-            Пользовательские параметры
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-4">Пользовательские параметры</label>
           {Object.entries(selectedElement.data || {}).map(([key, value]) => {
-            if (['label', 'description', 'color', 'weight', 'shape', 'lineStyle', 'edgeType'].includes(key)) {
+            if (
+              [
+                'label',
+                'description',
+                'color',
+                'weight',
+                'shape',
+                'lineStyle',
+                'edgeType',
+                'load',
+                'length',
+                'wire',
+                'transformer',
+              ].includes(key)
+            ) {
               return null;
             }
             return (
@@ -153,7 +221,7 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
               </div>
             );
           })}
-          
+
           <button
             onClick={() => {
               const key = prompt('Введите название параметра:');
@@ -173,7 +241,7 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
               const data = {
                 id: selectedElement.id,
                 type: isNode ? 'node' : 'edge',
-                data: selectedElement.data
+                data: selectedElement.data,
               };
               console.log('Данные для бекенда:', JSON.stringify(data, null, 2));
               alert('Данные выведены в консоль (F12)');
@@ -182,7 +250,7 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
           >
             Экспортировать данные
           </button>
-          
+
           <button
             onClick={() => {
               if (confirm(`Удалить ${isNode ? 'узел' : 'ребро'}?`)) {
@@ -196,7 +264,7 @@ const PropertiesPanel = ({ selectedElement, setSelectedElement }) => {
             }}
             className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-md transition-colors"
           >
-            🗑️ Удалить
+            Удалить
           </button>
         </div>
       </div>

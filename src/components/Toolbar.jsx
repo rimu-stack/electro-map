@@ -1,21 +1,24 @@
-import React from 'react';
+﻿import React from 'react';
 
-const Toolbar = ({ nodeShape, setNodeShape }) => {
+const Toolbar = ({
+  nodeShape,
+  setNodeShape,
+  onCalculate,
+  isCalculating,
+}) => {
   const shapes = [
-    { id: 'rectangle', name: 'Прямоугольник', icon: '▭' },
-    { id: 'circle', name: 'Круг', icon: '●' },
-    { id: 'diamond', name: 'Ромб', icon: '◆' },
-    { id: 'ellipse', name: 'Эллипс', icon: '⬭' },
-    { id: 'point', name: 'Точка', icon: '•' },
+    { id: 'diamond', name: 'Ромб (трансформатор)', icon: '◆' },
+    { id: 'point', name: 'Точка (отпайка)', icon: '•' },
+    { id: 'rectangle', name: 'Прямоугольник (потребитель)', icon: '▭' },
   ];
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-4 shadow-sm">
-      <h1 className="text-xl font-bold text-gray-800">Редактор графов</h1>
-      
+      <h1 className="text-xl font-bold text-gray-800">Карта сети</h1>
+
       <div className="flex items-center gap-2 ml-8">
-        <span className="text-sm text-gray-600 font-medium">Форма узла:</span>
-        {shapes.map(shape => (
+        <span className="text-sm text-gray-600 font-medium">Тип узла:</span>
+        {shapes.map((shape) => (
           <button
             key={shape.id}
             onClick={() => setNodeShape(shape.id)}
@@ -32,8 +35,16 @@ const Toolbar = ({ nodeShape, setNodeShape }) => {
         ))}
       </div>
 
-      <div className="ml-auto text-sm text-gray-500">
-        <span className="font-medium">Подсказка:</span> Дважды кликните на холст для создания узла • Delete для удаления
+      <button
+        onClick={onCalculate}
+        disabled={isCalculating}
+        className="ml-auto px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold text-sm transition-colors"
+      >
+        {isCalculating ? 'Расчет...' : 'Рассчитать через API'}
+      </button>
+
+      <div className="text-sm text-gray-500">
+        <span className="font-medium">Подсказка:</span> Дважды кликните на холст для создания узла.
       </div>
     </div>
   );

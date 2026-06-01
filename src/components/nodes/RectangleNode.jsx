@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Handle, Position } from 'reactflow';
 
 const RectangleNode = ({ data, selected }) => {
@@ -17,7 +17,7 @@ const RectangleNode = ({ data, selected }) => {
       <Handle type="source" position={Position.Right} id="right-source" className="!bg-gray-600" />
       <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-gray-600" />
       <Handle type="source" position={Position.Bottom} id="bottom-source" className="!bg-gray-600" />
-      <div className="text-white font-medium text-center">{data.label || 'Узел'}</div>
+      <div className="text-white font-medium text-center">{data.label || ''}</div>
     </div>
   );
 };

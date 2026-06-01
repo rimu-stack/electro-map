@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Handle, Position } from 'reactflow';
 
 const PointNode = ({ data, selected }) => {
@@ -12,14 +12,20 @@ const PointNode = ({ data, selected }) => {
       <Handle type="source" position={Position.Right} id="right-source" className="!bg-gray-600 !w-2 !h-2" />
       <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-gray-600 !w-2 !h-2" />
       <Handle type="source" position={Position.Bottom} id="bottom-source" className="!bg-gray-600 !w-2 !h-2" />
-      
+
       <div
         className={`w-full h-full rounded-full shadow-md border-2 transition-all ${
           selected ? 'border-blue-500 shadow-lg' : 'border-gray-300'
         }`}
         style={{ backgroundColor: data.color || '#3b82f6' }}
-        title={data.label || 'Точка'}
-      />
+        title={data.label ? `Отпайка ${data.label}` : 'Точка'}
+      >
+        {data.label && (
+          <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-white select-none">
+            {data.label}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
