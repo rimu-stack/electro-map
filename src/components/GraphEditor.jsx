@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useState, useRef } from 'react';
+﻿import React, { useCallback, useState, useRef, useEffect } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -24,27 +24,30 @@ const nodeTypes = {
   point: PointNode,
 };
 
-const GRAPH_STORAGE_KEY = 'electro-map.graph.v1';
+// ---------------------------------------------------------------------------
+// API helpers
+// ---------------------------------------------------------------------------
 
-function readSavedGraph() {
-  if (typeof window === 'undefined') {
-    return { nodes: [], edges: [] };
-  }
-
+async function fetchSharedState() {
   try {
-    const raw = window.localStorage.getItem(GRAPH_STORAGE_KEY);
-    if (!raw) {
-      return { nodes: [], edges: [] };
+    const res = await fetch('/api/state');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (Array.isArray(data?.nodes) && Array.isArray(data?.edges)) {
+      return data;
     }
-
-    const parsed = JSON.parse(raw);
-    return {
-      nodes: Array.isArray(parsed?.nodes) ? parsed.nodes : [],
-      edges: Array.isArray(parsed?.edges) ? parsed.edges : [],
-    };
   } catch {
-    return { nodes: [], edges: [] };
+    // ignore
   }
+  return null;
+}
+
+function saveSharedState(nodes, edges) {
+  fetch('/api/state', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nodes, edges }),
+  }).catch(() => {});
 }
 
 function getMaxId(nodes, edges) {
@@ -98,14 +101,47 @@ let nodeId = 1;
 
 const GraphEditor = ({ selectedElement, setSelectedElement, nodeShape, onGraphChange, defaultTransformer }) => {
   const reactFlowWrapper = useRef(null);
-  const savedGraph = readSavedGraph();
-  const [nodes, setNodes, onNodesChange] = useNodesState(savedGraph.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(savedGraph.edges.map(withNormalizedEdgeLabel));
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  // Tracks whether the current nodes/edges change came from the server (WS or initial load).
+  // When true, the save-effect skips one cycle to avoid echo loops.
+  const isRemoteUpdate = useRef(false);
+  const saveTimer = useRef(null);
 
-  React.useEffect(() => {
-    nodeId = Math.max(nodeId, getMaxId(nodes, edges) + 1);
-  }, []);
+  // Apply remote state (from WS message or initial API load)
+  const applyRemoteState = useCallback((data) => {
+    isRemoteUpdate.current = true;
+    setNodes(data.nodes);
+    setEdges(data.edges.map(withNormalizedEdgeLabel));
+    nodeId = Math.max(nodeId, getMaxId(data.nodes, data.edges) + 1);
+  }, [setNodes, setEdges]);
+
+  // Initial load from server
+  useEffect(() => {
+    fetchSharedState().then((data) => {
+      if (data) applyRemoteState(data);
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // WebSocket — real-time sync
+  useEffect(() => {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${proto}//${window.location.host}/api/ws`);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (Array.isArray(data?.nodes) && Array.isArray(data?.edges)) {
+          applyRemoteState(data);
+        }
+      } catch {
+        // ignore malformed messages
+      }
+    };
+
+    return () => ws.close();
+  }, [applyRemoteState]);
 
   const onConnect = useCallback(
     (params) => {
@@ -252,19 +288,19 @@ const GraphEditor = ({ selectedElement, setSelectedElement, nodeShape, onGraphCh
     onGraphChange?.({ nodes, edges });
   }, [nodes, edges, onGraphChange]);
 
+  // Persist to server (debounced, skipped for remote-originated updates)
   React.useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (isRemoteUpdate.current) {
+      isRemoteUpdate.current = false;
       return;
     }
-
-    try {
-      window.localStorage.setItem(
-        GRAPH_STORAGE_KEY,
-        JSON.stringify({ nodes, edges })
-      );
-    } catch {
-      // Ignore storage write errors (quota/privacy mode)
-    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveSharedState(nodes, edges);
+    }, 600);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [nodes, edges]);
 
   const onNodesDelete = useCallback(
