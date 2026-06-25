@@ -73,6 +73,38 @@ npm run build
 - **Tailwind CSS** - стилизация
 - **Vite** - сборщик
 
+## TLS режимы в Docker (Traefik)
+
+В `docker-compose.yml` теперь доступны два режима HTTPS:
+
+- ACME (Let's Encrypt) — режим по умолчанию, как и раньше
+- Self-signed — дополнительный режим для локальной разработки
+
+### ACME (по умолчанию)
+
+Если не задавать переменные, используется `ACME_HOST=md.localhost` и ACME-роутеры.
+
+### Self-signed (дополнительный)
+
+1. Сгенерируйте самоподписанный сертификат:
+
+```bash
+mkdir -p certs traefik/dynamic && \
+openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
+  -keyout certs/local.key \
+  -out certs/local.crt \
+  -subj "/CN=md.localhost" && \
+cp traefik/tls.selfsigned.yml.example traefik/dynamic/tls.yml
+```
+
+2. Запустите в self-signed режиме:
+
+```bash
+SELF_SIGNED_HOST=md.localhost ACME_HOST=acme.disabled.local docker compose up -d --build
+```
+
+`SELF_SIGNED_HOST` включает роутеры без `certresolver`, а `ACME_HOST` уводим на неиспользуемый host, чтобы не было конфликтов правил.
+
 ## Структура проекта
 
 ```

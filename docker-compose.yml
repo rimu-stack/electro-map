@@ -3,11 +3,13 @@ services:
     image: traefik:v3.3
     container_name: traefik
     restart: unless-stopped
+    depends_on:
+      - frontend
     command:
       - "--api.dashboard=true"
       - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
       # Entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
@@ -25,8 +27,9 @@ services:
       - "443:443"
       - "8080:8080"   # Traefik dashboard (закрыть на проде firewall'ом)
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - letsencrypt:/letsencrypt
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./certs:/certs:ro
     networks:
       - proxy
 
@@ -39,17 +42,6 @@ services:
       - STATE_FILE=/app/data/state.json
     volumes:
       - graph_state:/app/data
-    labels:
-      - "traefik.enable=true"
-      # HTTPS-маршрут: /api/* → backend (стриппим /api перед передачей)
-      - "traefik.http.routers.backend.rule=Host(``) && PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=websecure"
-      - "traefik.http.routers.backend.tls=true"
-      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.backend.priority=10"
-      - "traefik.http.routers.backend.middlewares=strip-api@docker"
-      - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     networks:
       - proxy
 
@@ -58,15 +50,8 @@ services:
       context: .
     container_name: mapa-frontend
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      # HTTPS-маршрут: всё остальное → frontend (SPA)
-      - "traefik.http.routers.frontend.rule=Host(``)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls=true"
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.frontend.priority=1"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+    ports:
+      - "3000:80"
     networks:
       - proxy
 
